@@ -1,5 +1,30 @@
 # Cat Behavior RAG
 
+## Embedding Provider 配置
+
+项目现在支持两种 embedding provider：
+
+- `dashscope`：云端向量服务（默认）
+- `local`：本地 HuggingFace/sentence-transformers 模型（可使用 GPU）
+
+通过环境变量切换：
+
+```bash
+# 1) 使用 DashScope（默认）
+EMBEDDING_PROVIDER=dashscope
+DASHSCOPE_API_KEY=your_api_key
+
+# 2) 使用本地模型（推荐有显卡时）
+EMBEDDING_PROVIDER=local
+LOCAL_EMBEDDING_MODEL=BAAI/bge-small-zh-v1.5
+LOCAL_EMBEDDING_DEVICE=cuda
+```
+
+说明：
+
+- `LOCAL_EMBEDDING_DEVICE` 可设为 `cuda`、`cpu` 或 `cuda:0`
+- 若使用 `local`，请确保已安装 `langchain-huggingface` 与 `sentence-transformers`
+
 ## Todo List
 
 - [x] Convert file to pure text (support pdf and txt)
