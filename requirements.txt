@@ -1,0 +1,18 @@
+# Python runtime dependencies for CatBehaviorRag.
+# Install with: pip install -r requirements.txt
+# OCR also requires a local Tesseract binary on the machine.
+
+chromadb>=0.5.23
+langchain>=0.3.20
+langchain-chroma>=0.2.2
+langchain-community>=0.3.20
+langchain-text-splitters>=0.3.8
+numpy>=1.26
+streamlit>=1.30
+tqdm>=4.66
+dashscope>=1.20.14
+pypdf>=5.0
+pypdfium2>=4.30
+pytesseract>=0.3.10
+rapidocr_onnxruntime>=1.4.4
+Pillow>=10.0
