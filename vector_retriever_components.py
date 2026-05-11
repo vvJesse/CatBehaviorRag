@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,6 +25,7 @@ class VectorStoreConfig:
     """聚合向量检索所需的配置，避免运行期分散读取全局 Config。"""
 
     full_data_dir: Path
+    chunked_documents_json_path: Path
     persist_dir: Path
     embedding_provider: EmbeddingProvider
     embedding_model_name: str
@@ -41,6 +43,7 @@ class VectorStoreConfig:
         cls,
         *,
         full_data_dir: str | Path | None = None,
+        chunked_documents_json_path: str | Path | None = None,
         persist_dir: str | Path | None = None,
         embedding_provider: EmbeddingProvider | None = None,
         embedding_model_name: str | None = None,
@@ -54,6 +57,11 @@ class VectorStoreConfig:
         )
         return cls(
             full_data_dir=Path(full_data_dir) if full_data_dir else Path(Config.full_text_path),
+            chunked_documents_json_path=(
+                Path(chunked_documents_json_path)
+                if chunked_documents_json_path
+                else Path(Config.chunked_documents_json_path)
+            ),
             persist_dir=Path(persist_dir) if persist_dir else Path(Config.vector_store_path),
             embedding_provider=resolved_provider,
             embedding_model_name=embedding_model_name or default_embedding_model,
@@ -148,6 +156,7 @@ class DocumentChunkingStrategy:
                     "chunk_index": chunk_index,
                     "chunk_count": len(chunks),
                     "original_length": len(text),
+                    "chunk_length": len(chunk),
                 },
             )
             for chunk_index, chunk in enumerate(chunks, start=1)
@@ -176,8 +185,31 @@ class DocumentPreprocessor:
 class TextDocumentLoader:
     """负责从全文目录读取文本文件并交给预处理器。"""
 
-    def __init__(self, preprocessor: DocumentPreprocessor):
+    def __init__(self, preprocessor: DocumentPreprocessor, chunked_documents_json_path: Path | None = None):
         self.preprocessor = preprocessor
+        self.chunked_documents_json_path = chunked_documents_json_path
+
+    def _export_documents_snapshot(self, documents: list[Document]) -> None:
+        if self.chunked_documents_json_path is None:
+            return
+
+        self.chunked_documents_json_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = [
+            {
+                "page_content": document.page_content,
+                "metadata": document.metadata,
+            }
+            for document in documents
+        ]
+        self.chunked_documents_json_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        logger.info(
+            "切分文档快照已导出 | 路径=%s 数量=%d",
+            self.chunked_documents_json_path,
+            len(documents),
+        )
 
     def load_from_directory(self, full_data_dir: Path) -> list[Document]:
         if not full_data_dir.exists():
@@ -202,6 +234,7 @@ class TextDocumentLoader:
         if not documents:
             raise ValueError(f"全文目录中没有可用文本行: {full_data_dir}")
 
+        self._export_documents_snapshot(documents)
         logger.info("文档加载完成 | 共 %d 个片段", len(documents))
         return documents
 

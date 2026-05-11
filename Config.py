@@ -36,6 +36,11 @@ support_file_types = ["pdf", "txt"]
 # 上传文档转全文后的落盘目录。
 full_text_path = project_root / "RagDocumentUploader" / "full_data"
 
+# 切分后文档快照导出路径，便于人工查看 page_content 与 metadata。
+chunked_documents_json_path = Path(
+	os.getenv("CHUNKED_DOCUMENTS_JSON_PATH", str(project_root / "Data" / "chunked_documents.json"))
+)
+
 # 向量库持久化目录。
 vector_store_path = project_root / ".chroma" / "line_documents"
 
@@ -60,10 +65,10 @@ local_embedding_encode_kwargs = {
 }
 
 # 单条文档允许直接入库的最大字符数；超过后将触发文本切分。
-max_doc_length = 300
+max_doc_length = 600
 
 # 文本切分器配置。
-text_splitter_chunk_size = 200
+text_splitter_chunk_size = 500
 text_splitter_chunk_overlap = 50
 text_splitter_separators = [
 	"\n\n",

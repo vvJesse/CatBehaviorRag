@@ -45,6 +45,7 @@ class VectorRetriever:
 
 		# 为兼容现有外部代码，保留常用属性访问。
 		self.full_data_dir = self.config.full_data_dir
+		self.chunked_documents_json_path = self.config.chunked_documents_json_path
 		self.persist_dir = self.config.persist_dir
 		self.embedding_provider = self.config.embedding_provider
 		self.collection_name = self.config.collection_name
@@ -69,7 +70,10 @@ class VectorRetriever:
 			separators=self.config.text_splitter_separators,
 		)
 		self._preprocessor = DocumentPreprocessor(chunking_strategy)
-		self._document_loader = TextDocumentLoader(self._preprocessor)
+		self._document_loader = TextDocumentLoader(
+			self._preprocessor,
+			chunked_documents_json_path=self.chunked_documents_json_path,
+		)
 		self._vector_store_manager = VectorStoreManager(
 			persist_dir=self.persist_dir,
 			collection_name=self.collection_name,
