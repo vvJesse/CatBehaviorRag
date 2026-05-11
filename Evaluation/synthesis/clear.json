@@ -1,0 +1,392 @@
+[
+  {
+    "id": "q_001",
+    "question": "猫突然开始乱尿怎么办",
+    "intent": "猫乱尿原因分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "stress",
+      "territory",
+      "medical_issue",
+      "litter_box"
+    ],
+    "reference_answer": "猫突然乱尿可能与应激、领地冲突、猫砂盆问题或疾病有关，应优先排查健康问题，并检查近期环境变化。"
+  },
+  {
+    "id": "q_002",
+    "question": "猫最近半夜一直叫是什么原因",
+    "intent": "夜间叫唤原因分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "attention_seeking",
+      "stress",
+      "heat",
+      "aging"
+    ],
+    "reference_answer": "猫夜间持续叫唤可能与寻求关注、发情、压力或年龄相关问题有关，需要结合年龄和生活环境综合判断。"
+  },
+  {
+    "id": "q_003",
+    "question": "猫为什么会突然咬主人",
+    "intent": "攻击行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "overstimulation",
+      "fear",
+      "pain",
+      "play_behavior"
+    ],
+    "reference_answer": "猫突然咬人可能与过度刺激、恐惧、防御、疼痛或玩耍行为升级有关，需要观察触发场景。"
+  },
+  {
+    "id": "q_004",
+    "question": "新来的猫总被家里的老猫哈气怎么办",
+    "intent": "多猫社交冲突",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "territory",
+      "gradual_introduction",
+      "stress",
+      "resource_management"
+    ],
+    "reference_answer": "老猫对新猫哈气通常是领地和压力问题，应采用渐进式引入，并保证资源分散和安全空间。"
+  },
+  {
+    "id": "q_005",
+    "question": "猫总喜欢抓沙发怎么办",
+    "intent": "抓挠行为管理",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "scratching_behavior",
+      "territory_marking",
+      "environment_enrichment",
+      "scratching_post"
+    ],
+    "reference_answer": "抓挠是猫的正常行为，可通过提供合适的猫抓板、改善环境和引导使用来减少抓沙发。"
+  },
+  {
+    "id": "q_006",
+    "question": "猫一直躲在床底不出来正常吗",
+    "intent": "躲藏行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "fear",
+      "stress",
+      "environment_change",
+      "illness"
+    ],
+    "reference_answer": "长期躲藏可能与恐惧、环境变化、压力或身体不适有关，需要结合最近变化和精神状态判断。"
+  },
+  {
+    "id": "q_007",
+    "question": "猫换了新环境后不吃东西怎么办",
+    "intent": "环境适应问题",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "stress",
+      "environment_change",
+      "safe_space",
+      "adaptation"
+    ],
+    "reference_answer": "搬家后不进食通常与环境压力有关，应提供安静安全空间，并减少过度打扰。"
+  },
+  {
+    "id": "q_008",
+    "question": "猫为什么总喜欢凌晨跑酷",
+    "intent": "高活跃行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "predatory_behavior",
+      "energy_release",
+      "night_activity",
+      "environment_enrichment"
+    ],
+    "reference_answer": "猫凌晨活跃与其天生捕猎节律有关，增加白天互动和环境 enrichment 有助于缓解。"
+  },
+  {
+    "id": "q_009",
+    "question": "猫总舔自己舔到掉毛是不是有问题",
+    "intent": "过度舔毛分析",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "stress",
+      "skin_problem",
+      "pain",
+      "compulsive_behavior"
+    ],
+    "reference_answer": "过度舔毛可能与皮肤问题、压力、疼痛或强迫行为有关，需要排查医学原因。"
+  },
+  {
+    "id": "q_010",
+    "question": "猫不愿意用新的猫砂盆怎么办",
+    "intent": "猫砂盆适应问题",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "litter_box_preference",
+      "stress",
+      "cleanliness",
+      "location"
+    ],
+    "reference_answer": "猫拒绝新猫砂盆可能与位置、气味、大小或猫砂类型变化有关，应逐步过渡。"
+  },
+  {
+    "id": "q_011",
+    "question": "猫为什么喜欢推东西下桌子",
+    "intent": "探索行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "play_behavior",
+      "exploration",
+      "attention_seeking",
+      "predatory_behavior"
+    ],
+    "reference_answer": "推东西可能是探索、玩耍或吸引主人注意的行为，也与猫的捕猎本能有关。"
+  },
+  {
+    "id": "q_012",
+    "question": "猫突然变得特别黏人是为什么",
+    "intent": "依赖行为变化分析",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "stress",
+      "illness",
+      "aging",
+      "social_behavior"
+    ],
+    "reference_answer": "突然变得异常黏人可能与压力、疾病、年龄变化或社交需求变化有关。"
+  },
+  {
+    "id": "q_013",
+    "question": "猫一直对窗外的鸟叫正常吗",
+    "intent": "捕猎行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "predatory_behavior",
+      "frustration",
+      "visual_stimulation",
+      "chattering"
+    ],
+    "reference_answer": "对鸟发出特殊叫声通常与捕猎兴奋和视觉刺激有关，是常见行为。"
+  },
+  {
+    "id": "q_014",
+    "question": "猫洗澡后一直生气怎么办",
+    "intent": "应激行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "stress",
+      "fear",
+      "handling",
+      "recovery"
+    ],
+    "reference_answer": "洗澡可能给猫带来较大压力，应提供安静环境并避免继续刺激。"
+  },
+  {
+    "id": "q_015",
+    "question": "猫为什么突然不让摸了",
+    "intent": "触摸耐受变化分析",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "pain",
+      "stress",
+      "overstimulation",
+      "boundary"
+    ],
+    "reference_answer": "突然抗拒触摸可能与疼痛、压力或过度刺激有关，需要观察是否伴随其他异常。"
+  },
+  {
+    "id": "q_016",
+    "question": "两只猫总是抢同一个地方睡觉怎么办",
+    "intent": "资源竞争分析",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "resource_management",
+      "territory",
+      "social_conflict",
+      "safe_space"
+    ],
+    "reference_answer": "猫之间争抢睡觉位置通常与资源竞争和安全偏好有关，应增加休息点。"
+  },
+  {
+    "id": "q_017",
+    "question": "猫为什么喜欢钻纸箱",
+    "intent": "安全空间行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "safe_space",
+      "stress_reduction",
+      "hiding_behavior",
+      "environment_enrichment"
+    ],
+    "reference_answer": "纸箱能提供封闭安全感，有助于缓解压力和满足躲藏需求。"
+  },
+  {
+    "id": "q_018",
+    "question": "猫最近食欲正常但是精神很差",
+    "intent": "异常行为观察",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "illness",
+      "pain",
+      "stress",
+      "behavior_change"
+    ],
+    "reference_answer": "精神状态下降即使食欲正常也可能提示疾病或压力，需要进一步观察和排查。"
+  },
+  {
+    "id": "q_019",
+    "question": "猫为什么总喜欢咬电线",
+    "intent": "异常啃咬行为分析",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "exploration",
+      "boredom",
+      "teething",
+      "environment_enrichment"
+    ],
+    "reference_answer": "咬电线可能与探索、无聊或啃咬需求有关，需要增加玩具并做好环境安全。"
+  },
+  {
+    "id": "q_020",
+    "question": "猫一见陌生人就躲起来怎么办",
+    "intent": "陌生人恐惧分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "fear",
+      "socialization",
+      "safe_space",
+      "stress"
+    ],
+    "reference_answer": "害怕陌生人是常见行为，可通过提供安全空间和渐进接触降低压力。"
+  },
+  {
+    "id": "q_021",
+    "question": "猫一直蹭人是什么意思",
+    "intent": "社交和气味行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "scent_marking",
+      "social_behavior",
+      "affiliation",
+      "communication"
+    ],
+    "reference_answer": "蹭人通常是气味标记和社交行为，也可能表示亲近和寻求互动。"
+  },
+  {
+    "id": "q_022",
+    "question": "猫为什么会突然炸毛",
+    "intent": "防御行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "fear",
+      "defensive_behavior",
+      "arousal",
+      "stress"
+    ],
+    "reference_answer": "炸毛通常与恐惧、防御或高度兴奋有关，是一种身体信号。"
+  },
+  {
+    "id": "q_023",
+    "question": "猫总是在门口等主人回家正常吗",
+    "intent": "依恋行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "social_behavior",
+      "routine",
+      "attachment",
+      "anticipation"
+    ],
+    "reference_answer": "等待主人回家可能与习惯、时间预期和社交依恋有关。"
+  },
+  {
+    "id": "q_024",
+    "question": "猫为什么突然开始攻击另一只猫",
+    "intent": "多猫攻击行为分析",
+    "difficulty": "hard",
+    "expected_concepts": [
+      "territory",
+      "stress",
+      "redirected_aggression",
+      "resource_conflict"
+    ],
+    "reference_answer": "突然攻击同伴可能与领地压力、资源竞争或转移性攻击有关。"
+  },
+  {
+    "id": "q_025",
+    "question": "猫为什么会突然食欲下降",
+    "intent": "食欲变化分析",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "illness",
+      "stress",
+      "environment_change",
+      "pain"
+    ],
+    "reference_answer": "食欲下降可能与疾病、疼痛或压力有关，需要结合持续时间进一步观察。"
+  },
+  {
+    "id": "q_026",
+    "question": "猫总喜欢在键盘上睡觉怎么办",
+    "intent": "寻求关注与舒适行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "warmth",
+      "attention_seeking",
+      "social_behavior",
+      "comfort"
+    ],
+    "reference_answer": "猫喜欢待在键盘附近可能与温暖、关注和陪伴需求有关。"
+  },
+  {
+    "id": "q_027",
+    "question": "猫为什么突然开始到处磨爪子",
+    "intent": "抓挠频率变化分析",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "territory_marking",
+      "stress",
+      "scratching_behavior",
+      "environment_change"
+    ],
+    "reference_answer": "抓挠增加可能与压力、领地标记需求增强或环境变化有关。"
+  },
+  {
+    "id": "q_028",
+    "question": "猫为什么会一直盯着一个地方看",
+    "intent": "环境观察行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "hearing",
+      "visual_attention",
+      "predatory_behavior",
+      "environmental_stimulus"
+    ],
+    "reference_answer": "猫长时间盯着某处通常与敏锐感官和环境刺激有关。"
+  },
+  {
+    "id": "q_029",
+    "question": "猫绝育后性格会变化吗",
+    "intent": "绝育行为变化分析",
+    "difficulty": "medium",
+    "expected_concepts": [
+      "hormones",
+      "territory",
+      "activity_level",
+      "social_behavior"
+    ],
+    "reference_answer": "绝育后部分行为会受到激素变化影响，例如减少发情和部分领地行为。"
+  },
+  {
+    "id": "q_030",
+    "question": "猫为什么总喜欢突然冲出来吓人",
+    "intent": "伏击行为分析",
+    "difficulty": "easy",
+    "expected_concepts": [
+      "play_behavior",
+      "predatory_behavior",
+      "energy_release",
+      "stimulation"
+    ],
+    "reference_answer": "突然扑人或伏击通常与玩耍和捕猎本能有关，年轻猫更常见。"
+  }
+]

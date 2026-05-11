@@ -81,3 +81,6 @@ text_splitter_separators = [
 	" ",
 	"",
 ]
+
+eval_model = "qwen-plus"
+eval_dataset = "syn-clear"

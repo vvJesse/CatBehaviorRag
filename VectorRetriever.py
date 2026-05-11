@@ -94,10 +94,13 @@ class VectorRetriever:
 		return self._document_loader.load_from_directory(self.full_data_dir)
 
 	def build_vector_store(self, force_rebuild: bool = True) -> Chroma:
-		"""根据全文目录重建本地 Chroma 向量库。"""
+		"""根据参数重建或复用本地 Chroma 向量库。"""
 		logger.info("build_vector_store | force_rebuild=%s", force_rebuild)
+		if not force_rebuild:
+			return self._vector_store_manager.get_or_create(self.load_documents)
+
 		documents = self.load_documents()
-		return self._vector_store_manager.build_from_documents(documents, force_rebuild=force_rebuild)
+		return self._vector_store_manager.build_from_documents(documents, force_rebuild=True)
 
 	def get_vector_store(self) -> Chroma:
 		"""返回可用向量库；不存在时自动构建。"""

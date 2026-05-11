@@ -13,6 +13,7 @@ sentence-transformers>=3.0.1
 streamlit>=1.30
 tqdm>=4.66
 dashscope>=1.20.14
+ragas>=0.2.0
 pypdf>=5.0
 pypdfium2>=4.30
 pytesseract>=0.3.10
