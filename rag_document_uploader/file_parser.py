@@ -9,7 +9,7 @@ import pytesseract
 from rapidocr_onnxruntime import RapidOCR
 from tqdm import tqdm
 
-from RagDocumentUploader.text_normalizer import OCRTextNormalizer
+from rag_document_uploader.text_normalizer import OCRTextNormalizer
 
 
 class OCRService:

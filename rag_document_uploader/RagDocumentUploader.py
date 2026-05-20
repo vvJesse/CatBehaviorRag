@@ -4,9 +4,9 @@ from io import BytesIO
 from pathlib import Path
 
 import Config
-from RagDocumentUploader.file_parser import OCRService, PDFTextExtractor, UploadedFileParser
-from RagDocumentUploader.storage import FullTextStorage
-from RagDocumentUploader.text_normalizer import OCRTextNormalizer
+from rag_document_uploader.file_parser import OCRService, PDFTextExtractor, UploadedFileParser
+from rag_document_uploader.storage import FullTextStorage
+from rag_document_uploader.text_normalizer import OCRTextNormalizer
 
 
 def fix_ocr_text(text):

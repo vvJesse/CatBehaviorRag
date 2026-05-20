@@ -34,11 +34,11 @@ project_root = Path(__file__).resolve().parent
 support_file_types = ["pdf", "txt"]
 
 # 上传文档转全文后的落盘目录。
-full_text_path = project_root / "RagDocumentUploader" / "full_data"
+full_text_path = project_root / "rag_document_uploader" / "full_data"
 
 # 切分后文档快照导出路径，便于人工查看 page_content 与 metadata。
 chunked_documents_json_path = Path(
-	os.getenv("CHUNKED_DOCUMENTS_JSON_PATH", str(project_root / "Data" / "chunked_documents.json"))
+	os.getenv("CHUNKED_DOCUMENTS_JSON_PATH", str(project_root / "data" / "chunked_documents.json"))
 )
 
 # 向量库持久化目录。
