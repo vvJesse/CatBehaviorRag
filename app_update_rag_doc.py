@@ -1,6 +1,6 @@
 import streamlit as st
 
-from RagDocumentUploader.RagDocumentUploader import RagDocumentUploader
+from rag_document_uploader.RagDocumentUploader import RagDocumentUploader
 
 
 def main() -> None:

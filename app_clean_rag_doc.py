@@ -4,12 +4,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from RagDocumentUploader.markdown_cleaner import DashScopeMarkdownFormatter, MarkdownCleaner
+from rag_document_uploader.markdown_cleaner import DashScopeMarkdownFormatter, MarkdownCleaner
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-DEFAULT_INPUT_PATH = PROJECT_ROOT / "RagDocumentUploader" / "data-cleaning-example" / "家有恶猫-片段.txt"
-DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "RagDocumentUploader" / "cleaned_data" / "家有恶猫-片段.cleaned.md"
+DEFAULT_INPUT_PATH = PROJECT_ROOT / "rag_document_uploader" / "data-cleaning-example" / "家有恶猫-片段.txt"
+DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "rag_document_uploader" / "cleaned_data" / "家有恶猫-片段.cleaned.md"
 
 
 def build_parser() -> argparse.ArgumentParser:
