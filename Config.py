@@ -84,3 +84,8 @@ text_splitter_separators = [
 
 eval_model = "qwen-plus"
 eval_dataset = "syn-clear"
+
+# --- Consultation System ---
+consultation_model = os.getenv("CONSULTATION_MODEL", "qwen-plus")
+max_conversation_rounds = int(os.getenv("MAX_CONVERSATION_ROUNDS", "10"))
+benchmark_path = project_root / "Data" / "enquiries_benchmark.json"
