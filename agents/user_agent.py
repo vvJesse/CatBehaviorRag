@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Iterator
 
 from utils.benchmark_loader import BenchmarkCase
 from utils.llm_client import LLMClient
@@ -11,9 +12,10 @@ logger = logging.getLogger(__name__)
 class UserAgent:
     """模拟猫主人，根据 BenchmarkCase 的 user_state 逐步披露信息。"""
 
-    def __init__(self, case: BenchmarkCase, llm: LLMClient) -> None:
+    def __init__(self, case: BenchmarkCase, llm_fast: LLMClient, llm_strong: LLMClient) -> None:
         self.case = case
-        self.llm = llm
+        self._llm_fast = llm_fast      # 用于事实判断分类（非流式）
+        self._llm_strong = llm_strong  # 用于生成用户回复（流式）
         self._conversation_history: list[dict] = []
         self._revealed_indices: set[int] = set()
 
@@ -47,7 +49,7 @@ class UserAgent:
         return prompt
 
     def _check_and_reveal_facts(self, behaviorist_question: str) -> list[str]:
-        """检查行为专家的问题是否触发了尚未披露的可发现事实。"""
+        """检查行为专家的问题是否触发了尚未披露的可发现事实（使用快速模型，非流式）。"""
         newly_revealed: list[str] = []
         us = self.case.user_state
 
@@ -75,7 +77,7 @@ class UserAgent:
             ]
 
             try:
-                answer = self.llm.chat(classifier_messages).strip()
+                answer = self._llm_fast.chat(classifier_messages).strip()
                 if "是" in answer:
                     self._revealed_indices.add(i)
                     newly_revealed.append(df.fact)
@@ -89,19 +91,26 @@ class UserAgent:
     # Public API
     # ------------------------------------------------------------------
 
-    def respond(self, behaviorist_message: str) -> str:
-        """根据行为专家的消息生成猫主人的回复。"""
-        newly_revealed = self._check_and_reveal_facts(behaviorist_message)
+    def respond(self, behaviorist_message: str) -> Iterator[str]:
+        """根据行为专家的消息流式生成猫主人的回复。
 
-        system_prompt = self._build_system_prompt(extra_facts=newly_revealed if newly_revealed else None)
+        调用方需消费完整个迭代器；内部会在迭代结束后自动更新对话历史。
+        """
+        newly_revealed = self._check_and_reveal_facts(behaviorist_message)
+        system_prompt = self._build_system_prompt(
+            extra_facts=newly_revealed if newly_revealed else None
+        )
 
         messages: list[dict] = [{"role": "system", "content": system_prompt}]
         messages.extend(self._conversation_history)
         messages.append({"role": "user", "content": behaviorist_message})
 
-        response = self.llm.chat(messages)
+        accumulated: list[str] = []
 
+        for chunk in self._llm_strong.stream_chat(messages):
+            accumulated.append(chunk)
+            yield chunk
+
+        full_response = "".join(accumulated)
         self._conversation_history.append({"role": "user", "content": behaviorist_message})
-        self._conversation_history.append({"role": "assistant", "content": response})
-
-        return response
+        self._conversation_history.append({"role": "assistant", "content": full_response})
