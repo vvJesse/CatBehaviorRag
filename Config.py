@@ -84,3 +84,38 @@ text_splitter_separators = [
 
 eval_model = "qwen-plus"
 eval_dataset = "syn-clear"
+
+# --- Consultation System ---
+consultation_model = os.getenv("CONSULTATION_MODEL", "qwen-plus")
+max_conversation_rounds = int(os.getenv("MAX_CONVERSATION_ROUNDS", "10"))
+benchmark_path = project_root / "Data" / "enquiries_benchmark.json"
+
+# --- Model Routing ---
+# 路由总开关：True 启用路由，False 全部使用 consultation_model（消融实验用）
+routing_enabled = os.getenv("ROUTING_ENABLED", "true").lower() == "true"
+
+# 小而快的模型：用于低成本分类任务（UserAgent 事实判断）
+model_fast = os.getenv("MODEL_FAST", "qwen-turbo")
+# 强一些的模型：用于问答对话轮次
+model_strong = os.getenv("MODEL_STRONG", "qwen-plus")
+# 深度思考模型：用于最终建议
+model_think = os.getenv("MODEL_THINK", "qwen3-32b")
+# 思考模型是否启用 enable_thinking（DashScope qwen3 系列专用参数）
+model_think_enable_thinking = os.getenv("MODEL_THINK_ENABLE_THINKING", "true").lower() == "true"
+
+
+def resolve_model(role: str) -> str:
+    """根据角色返回对应模型名。路由关闭时全部返回 consultation_model。
+
+    role: 'fast' | 'strong' | 'think'
+    """
+    if not routing_enabled:
+        return consultation_model
+    return {"fast": model_fast, "strong": model_strong, "think": model_think}.get(
+        role, consultation_model
+    )
+
+
+# --- Memory ---
+# 记忆总开关：True 启用（将 memory_store 中的内容注入行为专家 system prompt）
+memory_enabled = os.getenv("MEMORY_ENABLED", "true").lower() == "true"
