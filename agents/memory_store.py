@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
+from langsmith import traceable
 
+
+@traceable(name="memory_retrieval", run_type="retriever")
 def get_memory() -> str:
     """返回当前会话的相关历史记忆内容。
 

@@ -1,0 +1,113 @@
+现在设计了一个新的schema，请查看data/enquiries_benchmark_v2.json的内容，来修改代码。不用考虑兼容v1的schema，甚至可以删去v1的部分。
+
+一、user会根据user_setting来回答咨询agent的提问。
+
+二、增加几个指标来评测agent的最终的回答效果。
+
+judge统一用quick模式。
+
+1. 第一个指标，衡量咨询 agent 为完成一次咨询所使用的提问轮数。
+    - 定义：
+    仅统计 agent 主动提问的轮数。
+    如果一次回复中包含多个问题，仍记为 1 轮。
+    - 目的：
+    衡量咨询效率与成本控制能力。
+    - 计算方式：
+
+    AQT=∑i=1Nquestion_turnsiNAQT = \frac{\sum_{i=1}^{N} question\_turns_i}{N}AQT=N∑i=1Nquestion_turnsi
+
+2. 第二个指标，
+
+    衡量咨询 agent 的表达是否适合普通用户。
+
+    - Judge 输入：
+        - 完整 history
+        - final conclusion
+    - Judge 关注点：
+        - 是否存在过长段落
+        - 是否大量使用专业术语且缺少解释
+        - 是否存在说教感
+        - 是否情绪压迫感过强
+        - 是否像“AI lecture”
+        - 是否真正像人与人沟通
+    - 评分标准：
+        - 5：自然、友好、易理解
+        - 4：整体良好，少量表达偏硬
+        - 3：明显 AI 感或轻度说教
+        - 2：较难阅读，术语堆积
+        - 1：严重不友好或难以理解
+    - 最终归一化：
+
+    UFSnorm=UFS−14UFS_{norm} = \frac{UFS - 1}{4}UFSnorm=4UFS−1
+
+3. 第三个指标，
+衡量 agent 是否覆盖 case 中必须识别的关键方向。
+    - Judge 输入：
+        - history
+        - final conclusion
+        - required_directions
+    - Judge 任务：
+    判断 agent 是否：
+        - 明确识别
+        - 或合理暗示
+        了对应方向。
+    - 重要：
+        - 不要求 exact wording
+        - 不要求完全一致措辞
+        - 允许不同推理路径
+        - 只判断“方向是否覆盖”
+    - 计算方式：
+
+    DCR=covered_directionstotal_required_directionsDCR = \frac{covered\_directions}{total\_required\_directions}DCR=total_required_directionscovered_directions
+
+4. 第四个指标，
+
+    衡量最终建议是否真正“可以执行”。
+
+    - Judge 关注点：
+        - 是否给出具体行动
+        - 是否能真正落地
+        - 是否避免空泛安慰
+        - 是否有明确优先级
+        - 是否能让普通用户立刻知道下一步做什么
+    - 评分标准：
+        - 5：高度具体，可直接执行
+        - 4：大部分可执行，少量抽象
+        - 3：方向正确，但缺少落地细节
+        - 2：较空泛
+        - 1：几乎不可执行
+    - 归一化：
+
+    ASnorm=AS−14AS_{norm} = \frac{AS - 1}{4}ASnorm=4AS−1
+
+5. 第五个指标
+
+    衡量 agent 是否正确处理 case 的不确定性。
+
+    - Judge 输入：
+        - uncertainty
+        - history
+        - final conclusion
+    - 当 `uncertainty = true` 时：
+    agent 应：
+        - 承认信息不足
+        - 保留多个可能方向
+        - 避免过度确定性
+        - 不应“唯一确诊”
+    - 当 `uncertainty = false` 时：
+    agent 应：
+        - 明确聚焦核心问题
+        - 不应大篇幅讨论多个竞争性解释
+        - 可以提及次要因素
+        - 但应体现明显主次关系
+    - 评分标准：
+        - 1：完全错误处理 uncertainty
+        - 0：正确处理 uncertainty
+    - 最终统计：
+
+    UHA=correct_uncertainty_handling_casestotal_casesUHA = \frac{correct\_uncertainty\_handling\_cases}{total\_cases}UHA=total_casescorrect_uncertainty_handling_cases
+
+
+三、批量评测。
+
+需要可以一次跑完所有数据，并计算评估指标。

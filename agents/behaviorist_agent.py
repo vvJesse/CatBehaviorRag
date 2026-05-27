@@ -4,6 +4,7 @@ import logging
 from typing import Iterator
 
 import Config
+from langsmith import traceable
 from utils.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ class BehavioristAgent:
     # Public API
     # ------------------------------------------------------------------
 
+    @traceable(name="behaviorist_ask", run_type="chain")
     def ask(self, user_message: str) -> tuple[Iterator[str], bool, bool]:
         """处理猫主人的消息。
 
@@ -123,6 +125,7 @@ class BehavioristAgent:
             self._conversation_history.append({"role": "assistant", "content": full_text})
             return iter(full_text), False, False
 
+    @traceable(name="behaviorist_think_final", run_type="llm")
     def _stream_think_final(self, messages: list[dict]) -> Iterator[str]:
         """使用思考模型流式输出，并在结束后更新历史。"""
         accumulated: list[str] = []
@@ -145,3 +148,18 @@ class BehavioristAgent:
     @property
     def round_count(self) -> int:
         return self._round
+
+    @property
+    def final_conclusion(self) -> str | None:
+        """Return the final conclusion text, or None if consultation not done."""
+        if not self._done or not self._conversation_history:
+            return None
+        for msg in reversed(self._conversation_history):
+            if msg["role"] == "assistant":
+                return msg["content"]
+        return None
+
+    @property
+    def conversation_history(self) -> list[dict]:
+        """Return a copy of the full conversation history."""
+        return list(self._conversation_history)

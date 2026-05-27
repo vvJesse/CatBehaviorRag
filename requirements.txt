@@ -19,3 +19,4 @@ pypdfium2>=4.30
 pytesseract>=0.3.10
 rapidocr_onnxruntime>=1.4.4
 Pillow>=10.0
+langsmith>=0.1.0

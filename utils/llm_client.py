@@ -28,6 +28,7 @@ class LLMClient:
         kwargs: dict = {"model": model, "api_key": api_key, "temperature": temperature}
         if enable_thinking:
             kwargs["model_kwargs"] = {"enable_thinking": True}
+            kwargs["streaming"] = True  # enable_thinking requires streaming mode
         self._llm = ChatTongyi(**kwargs)
         self._model = model
         self._enable_thinking = enable_thinking

@@ -88,7 +88,7 @@ eval_dataset = "syn-clear"
 # --- Consultation System ---
 consultation_model = os.getenv("CONSULTATION_MODEL", "qwen-plus")
 max_conversation_rounds = int(os.getenv("MAX_CONVERSATION_ROUNDS", "10"))
-benchmark_path = project_root / "Data" / "enquiries_benchmark.json"
+benchmark_path = project_root / "data" / "enquiries_benchmark_v2.json"
 
 # --- Model Routing ---
 # 路由总开关：True 启用路由，False 全部使用 consultation_model（消融实验用）
@@ -119,3 +119,29 @@ def resolve_model(role: str) -> str:
 # --- Memory ---
 # 记忆总开关：True 启用（将 memory_store 中的内容注入行为专家 system prompt）
 memory_enabled = os.getenv("MEMORY_ENABLED", "true").lower() == "true"
+
+# --- LangSmith Tracing ---
+langchain_tracing_v2: str = os.getenv("LANGCHAIN_TRACING_V2", "false")
+langchain_api_key: str    = os.getenv("LANGCHAIN_API_KEY", "")
+langchain_project: str    = os.getenv("LANGCHAIN_PROJECT", "CatBehaviorRag")
+
+
+def setup_tracing() -> bool:
+    """Propagate LangSmith config into os.environ before any LangChain object is built.
+
+    Must be called before LLMClient.build_for_role(). Returns True if tracing activated.
+    """
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    if langchain_tracing_v2.lower() != "true":
+        return False
+    if not langchain_api_key:
+        _log.warning("LANGCHAIN_TRACING_V2=true but LANGCHAIN_API_KEY is not set — tracing disabled.")
+        return False
+
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"]     = langchain_api_key
+    os.environ["LANGCHAIN_PROJECT"]     = langchain_project
+    _log.info("LangSmith tracing enabled (project=%s)", langchain_project)
+    return True
