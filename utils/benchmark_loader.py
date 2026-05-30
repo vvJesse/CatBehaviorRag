@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BenchmarkCase:
     case_id: int
+    latitude: str
+    longitude: str
+    date: str
     initial_user_message: str
     user_setting: str
     reference_answer: str
@@ -33,6 +36,9 @@ def load_benchmark(path: Optional[Path] = None) -> list[BenchmarkCase]:
         cases.append(
             BenchmarkCase(
                 case_id=item["id"],
+                latitude=item["latitude"],
+                longitude=item["longitude"],
+                date=item["date"],
                 initial_user_message=item["initial_user_message"],
                 user_setting=item["user_setting"],
                 reference_answer=item["reference_answer"],

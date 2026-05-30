@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-from main import ConsultationResult, run_consultation
+from main import ConsultationResult, run_consultant_loop
 from utils.benchmark_loader import load_benchmark
 from utils.llm_client import LLMClient
 
@@ -58,7 +58,7 @@ def run_batch_evaluation(
 
     for case in cases:
         logger.info("运行 case %s ...", case.case_id)
-        consultation = run_consultation(
+        consultation = run_consultant_loop(
             case, llm_strong, llm_think, memory=memory, silent=True
         )
         results.append((case, consultation))

@@ -20,3 +20,7 @@ pytesseract>=0.3.10
 rapidocr_onnxruntime>=1.4.4
 Pillow>=10.0
 langsmith>=0.1.0
+ebooklib>=0.18
+beautifulsoup4>=4.12
+requests>=2.31
+tenacity>=8.2

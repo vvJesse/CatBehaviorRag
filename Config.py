@@ -31,7 +31,7 @@ def setup_logging(level: str | None = None) -> None:
 project_root = Path(__file__).resolve().parent
 
 # 文件上传模块支持的文件类型。
-support_file_types = ["pdf", "txt"]
+support_file_types = ["pdf", "txt", "epub"]
 
 # 上传文档转全文后的落盘目录。
 full_text_path = project_root / "rag_document_uploader" / "full_data"
@@ -84,6 +84,11 @@ text_splitter_separators = [
 
 eval_model = "qwen-plus"
 eval_dataset = "syn-clear"
+
+# Planner/State 循环模式的 state 和 history 输出路径（便于调试查看运行过程）
+state_history_output_path = Path(
+    os.getenv("STATE_HISTORY_OUTPUT_PATH", str(project_root / "data" / "session_state_history.jsonl"))
+)
 
 # --- Consultation System ---
 consultation_model = os.getenv("CONSULTATION_MODEL", "qwen-plus")

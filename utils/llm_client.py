@@ -84,6 +84,11 @@ class LLMClient:
     # Public API
     # ------------------------------------------------------------------
 
+    @property
+    def chat_model(self) -> ChatTongyi:
+        """底层 ChatTongyi 实例，供 with_structured_output 等 LangChain 操作使用。"""
+        return self._llm
+
     def chat(self, messages: list[dict]) -> str:
         """非流式调用，返回完整回复字符串（用于分类等轻量任务）。"""
         try:
@@ -101,6 +106,17 @@ class LLMClient:
         """
         try:
             for chunk in self._llm.stream(self._to_lc_messages(messages)):
+                text = chunk.content
+                if text:
+                    yield text
+        except Exception as e:
+            logger.error("LLM 流式调用失败：%s", e)
+            raise LLMClientError(f"LLM 流式调用失败：{e}") from e
+
+    def stream_chat_lc(self, chain, inputs: dict) -> Iterator[str]:
+        """对已构建好的 LangChain Runnable 做流式调用，yield 文本块。"""
+        try:
+            for chunk in chain.stream(inputs):
                 text = chunk.content
                 if text:
                     yield text

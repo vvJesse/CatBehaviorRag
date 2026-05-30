@@ -13,14 +13,22 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from typing import Iterator
 
 import Config
 from agents import memory_store
-from agents.behaviorist_agent import BehavioristAgent
+from agents.consultant_agent import (
+    ConsultState,
+    ConsultantAgent,
+    _update_state_with_tool_result,
+)
 from agents.user_agent import UserAgent
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from utils.benchmark_loader import BenchmarkCase, load_benchmark, select_case
 from utils.llm_client import LLMClient, LLMClientError
 
@@ -109,73 +117,6 @@ def _print_static_turn(role: str, content: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Benchmark consultation loop
-# ---------------------------------------------------------------------------
-
-def run_consultation(
-    case: BenchmarkCase,
-    llm_strong: LLMClient,
-    llm_think: LLMClient,
-    memory: str = "",
-    silent: bool = False,
-) -> ConsultationResult:
-    user_agent = UserAgent(case, llm_strong)
-    behaviorist = BehavioristAgent(llm_strong, llm_think, memory=memory)
-    question_turns = 0
-
-    if not silent:
-        print(f"\n{'=' * 50}")
-        print(f"Case: {case.case_id}")
-        routing_status = "启用" if Config.routing_enabled else "关闭（消融模式）"
-        memory_status = "启用" if Config.memory_enabled else "关闭"
-        print(f"路由: {routing_status}  |  记忆: {memory_status}")
-        print(f"{'=' * 50}")
-
-    current_msg = case.initial_user_message
-
-    if not silent:
-        _print_static_turn("【猫主人】", current_msg)
-
-    while True:
-        stream, is_done, is_think = behaviorist.ask(current_msg)
-
-        if not silent:
-            header = "【行为专家 · 深度分析】" if is_think else "【行为专家】"
-            behaviorist_text = _stream_turn(header, stream, is_think=is_think)
-        else:
-            behaviorist_text = _consume_stream(stream)
-
-        if is_done:
-            break
-
-        question_turns += 1
-
-        user_stream = user_agent.respond(behaviorist_text)
-        if not silent:
-            current_msg = _stream_turn("【猫主人】", user_stream)
-        else:
-            current_msg = _consume_stream(user_stream)
-
-    final_conclusion = behaviorist.final_conclusion or ""
-
-    if not silent:
-        fallback = behaviorist.round_count > Config.max_conversation_rounds
-        print(f"\n{'=' * 50}")
-        print(
-            f"对话结束 | 共 {behaviorist.round_count} 轮"
-            + ("（已触发最大轮数限制）" if fallback else "")
-        )
-        print(f"{'=' * 50}\n")
-
-    return ConsultationResult(
-        case_id=case.case_id,
-        conversation_history=behaviorist.conversation_history,
-        question_turns=question_turns,
-        final_conclusion=final_conclusion,
-    )
-
-
-# ---------------------------------------------------------------------------
 # Free-chat loop
 # ---------------------------------------------------------------------------
 
@@ -184,37 +125,297 @@ def run_free_chat(
     llm_think: LLMClient,
     memory: str = "",
 ) -> None:
-    behaviorist = BehavioristAgent(llm_strong, llm_think, memory=memory)
+    """自由对话模式：用户直接与 ConsultantAgent 对话，从 stdin 读取输入。"""
+    consultant = ConsultantAgent(llm_strong, llm_think)
 
     routing_status = "启用" if Config.routing_enabled else "关闭（消融模式）"
     memory_status = "启用" if Config.memory_enabled else "关闭"
-
-    print(f"\n{'=' * 50}")
-    print("自由对话模式 — 直接与猫行为专家对话")
+    print(f"\n{'=' * 55}")
+    print("自由对话模式 — 直接与猫行为顾问对话")
     print(f"路由: {routing_status}  |  记忆: {memory_status}")
     print("输入 q / quit / exit / 退出 结束对话")
-    print(f"{'=' * 50}")
+    print(f"{'=' * 55}")
 
-    while True:
+    try:
+        initial_input = input("\n【你】 ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print("\n（对话中断）")
+        return
+    if not initial_input or initial_input.lower() in ("q", "quit", "exit", "退出"):
+        return
+
+    session = RunSession.create(None)
+    print(f"[Run 目录] {session.folder}")
+
+    rewritten = consultant.rewrite_initial_query(initial_input)
+    print(f"\n[Query Rewrite]\n{rewritten}")
+
+    state = ConsultState(
+        user_initial_query=initial_input,
+        rewritten_initial_query=rewritten,
+    )
+    session.log_state("init", 0, state, initial_message=initial_input, rewritten=rewritten)
+
+    history: list[BaseMessage] = []
+    cur_round = 0
+    user_input = initial_input
+
+    while cur_round < Config.max_conversation_rounds:
+        state.user_response_this_round = user_input
+        history.append(HumanMessage(content=user_input))
+        session.log_history(cur_round, "user", user_input)
+        session.log_state("user_input", cur_round, state)
+
+        state = _tool_loop(consultant, state, history, session, cur_round, silent=False)
+
+        consult_response = consultant.generate_response(state, history, trajectory=None)
+        history.append(AIMessage(content=consult_response.text))
+        session.log_history(cur_round, "consultant", consult_response.text)
+        session.log_state("consultant_response", cur_round, state,
+                          text=consult_response.text, end=consult_response.end)
+
+        print(f"\n【咨询员】")
+        print("-" * 50)
+        print(consult_response.text)
+
+        if consult_response.end:
+            session.log_state("consult_end", cur_round, state)
+            break
+
+        cur_round += 1
         try:
             user_input = input("\n【你】 ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\n（对话中断）")
             break
-
-        if not user_input:
-            continue
-        if user_input.lower() in ("q", "quit", "exit", "退出"):
+        if not user_input or user_input.lower() in ("q", "quit", "exit", "退出"):
             print("（对话结束）")
             break
 
-        stream, is_done, is_think = behaviorist.ask(user_input)
-        header = "【行为专家 · 深度分析】" if is_think else "【行为专家】"
-        _stream_turn(header, stream, is_think=is_think)
+    # 最终建议
+    state.resolved = True
+    think_stream = consultant.think(state, history)
+    _stream_turn("【行为专家 · 深度分析】", think_stream, is_think=True)
+    session.log_state("final_state", -1, state)
+    print(f"\n[Session 记录已写入: {session.folder}]")
 
-        if is_done:
-            print("\n（专家已给出最终建议，对话结束）")
+
+
+# ---------------------------------------------------------------------------
+# Consultant loop (new architecture)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RunSession:
+    """每次运行创建独立文件夹，分别记录 state / history / trajectory。"""
+    folder: Path
+
+    def __post_init__(self) -> None:
+        self.folder.mkdir(parents=True, exist_ok=True)
+        self._state_path      = self.folder / "state.jsonl"
+        self._history_path    = self.folder / "history.jsonl"
+        self._trajectory_path = self.folder / "trajectory.jsonl"
+        # 清空（本次 run 全新开始）
+        for p in (self._state_path, self._history_path, self._trajectory_path):
+            p.write_text("", encoding="utf-8")
+
+    # --- 三个追加写入方法 ---
+
+    def log_state(self, event: str, round: int, state: ConsultState, **extra) -> None:
+        entry = {"round": round, "event": event, "state": state.model_dump(), **extra}
+        self._append(self._state_path, entry)
+
+    def log_history(self, round: int, role: str, content: str) -> None:
+        entry = {"round": round, "role": role, "content": content}
+        self._append(self._history_path, entry)
+
+    def log_trajectory(self, round: int, step: dict) -> None:
+        entry = {"round": round, **step}
+        self._append(self._trajectory_path, entry)
+
+    @staticmethod
+    def _append(path: Path, obj: dict) -> None:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+
+    @staticmethod
+    def create(case_id: int | None) -> "RunSession":
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        label = f"case{case_id}" if case_id is not None else "free"
+        folder = Config.project_root / "run" / f"{timestamp}_{label}"
+        return RunSession(folder=folder)
+
+
+def _tool_loop(
+    consultant: ConsultantAgent,
+    state: ConsultState,
+    history: list[BaseMessage],
+    session: RunSession,
+    round_num: int,
+    silent: bool,
+) -> ConsultState:
+    """内循环：让 consultant 决定是否调用工具，最多 max_intermediate_turn 次。
+
+    工具调用结果作为 AIMessage 写入 history，同时更新 state.collected_evidence。
+    每次变更后立即写文件。
+    """
+    max_intermediate_turn = 3
+    tool_trajectory: list[dict] = []
+
+    for _ in range(max_intermediate_turn):
+        intermediate = consultant.generate_intermediate_response(state, history, tool_trajectory)
+
+        if intermediate.end_tool_call():
             break
+
+        if intermediate.is_tool_call():
+            tool_result = consultant.execute_tool(intermediate)
+
+            # 工具结果写入 history（AIMessage）
+            tool_msg = f"[{intermediate.tool_name}] {tool_result}"
+            history.append(AIMessage(content=tool_msg))
+
+            # 更新 state
+            state = _update_state_with_tool_result(state, intermediate.tool_name, tool_result)
+
+            step = {
+                "thought": intermediate.thought,
+                "tool_name": intermediate.tool_name,
+                "tool_args": intermediate.tool_args,
+                "observation": tool_result,
+            }
+            tool_trajectory.append(step)
+
+            session.log_trajectory(round_num, step)
+            session.log_state("tool_result", round_num, state)
+            if not silent:
+                print(f"\n[工具: {intermediate.tool_name}] {tool_result}")
+
+    return state
+
+
+def run_consultant_loop(
+    case: BenchmarkCase,
+    llm_strong: LLMClient,
+    llm_think: LLMClient,
+    memory: str = "",
+    silent: bool = False,
+) -> ConsultationResult:
+    """Consultant 对话循环，遵循 prompt-flow.txt 伪代码架构。
+
+    外循环驱动用户交互：
+      1. UserAgent 提供用户输入 → 写入 history
+      2. 内循环（tool loop）刷满工具状态
+      3. ConsultantAgent 生成正式回复 → 写入 history
+      4. 如 consultant 认为信息已足够（end=True），退出外循环
+      5. 最终调用 consultant.think() 流式输出深度建议
+
+    state 和 history 每次变更后立即写入独立 run 文件夹的三个 JSONL 文件。
+    返回 ConsultationResult 供评测使用。
+    """
+    session = RunSession.create(case.case_id)
+    if not silent:
+        print(f"[Run 目录] {session.folder}")
+
+    consultant = ConsultantAgent(llm_strong, llm_think)
+    user_agent = UserAgent(case, llm_strong)
+
+    history: list[BaseMessage] = []
+    conv_history: list[dict] = []   # 纯用户/咨询员消息，供评测使用
+    question_turns = 0
+
+    # 1. 获取初始消息
+    initial_message = case.initial_user_message
+    if not silent:
+        print(f"\n{'=' * 55}")
+        print(f"Case {case.case_id}")
+        routing_status = "启用" if Config.routing_enabled else "关闭（消融模式）"
+        memory_status = "启用" if Config.memory_enabled else "关闭"
+        print(f"路由: {routing_status}  |  记忆: {memory_status}")
+        print(f"{'=' * 55}")
+        _print_static_turn("【猫主人（初始问题）】", initial_message)
+
+    # 2. Rewrite 初始 query
+    rewritten = consultant.rewrite_initial_query(initial_message)
+    if not silent:
+        print(f"\n[Query Rewrite]\n{rewritten}")
+
+    # 3. 初始化 state（含假设）
+    initial_hypotheses = consultant.initialize_hypotheses(initial_message, rewritten)
+    state = ConsultState(
+        user_initial_query=initial_message,
+        rewritten_initial_query=rewritten,
+        hypothesis=initial_hypotheses,
+    )
+    session.log_state("init", 0, state, initial_message=initial_message, rewritten=rewritten)
+
+    max_consult_round = Config.max_conversation_rounds
+
+    for consult_cur_round in range(max_consult_round):
+        # 4. 用户输入（第 0 轮用初始消息，之后由 UserAgent 回答上一轮 consultant 的话）
+        if consult_cur_round == 0:
+            user_input = initial_message
+        else:
+            last_consultant_msg = history[-1].content if history else ""
+            user_stream = user_agent.respond(last_consultant_msg)
+            if not silent:
+                user_input = _stream_turn("【猫主人】", user_stream)
+            else:
+                user_input = _consume_stream(user_stream)
+            question_turns += 1
+
+        state.user_response_this_round = user_input
+        history.append(HumanMessage(content=user_input))
+        conv_history.append({"role": "user", "content": user_input})
+        session.log_history(consult_cur_round, "user", user_input)
+        session.log_state("user_input", consult_cur_round, state)
+
+        # 5. 内循环：刷满工具状态
+        state = _tool_loop(consultant, state, history, session, consult_cur_round, silent)
+
+        # 5b. 更新假设置信度
+        state = consultant.update_state(state, history, user_input)
+        session.log_state("state_updated", consult_cur_round, state)
+
+        # 6. 生成正式回复
+        consult_response = consultant.generate_response(state, history, trajectory=None)
+        history.append(AIMessage(content=consult_response.text))
+        conv_history.append({"role": "assistant", "content": consult_response.text})
+        session.log_history(consult_cur_round, "consultant", consult_response.text)
+        session.log_state("consultant_response", consult_cur_round, state,
+                          text=consult_response.text, end=consult_response.end)
+
+        if not silent:
+            print(f"\n【咨询员】")
+            print("-" * 50)
+            print(consult_response.text)
+
+        if consult_response.end:
+            session.log_state("consult_end", consult_cur_round, state)
+            break
+
+    else:
+        if not silent:
+            print(f"\n[已达最大轮数 {max_consult_round}，进入最终建议]")
+
+    # 7. 最终 think：流式输出深度建议
+    state.resolved = True
+    think_stream = consultant.think(state, history)
+    if not silent:
+        final_conclusion = _stream_turn("【行为专家 · 深度分析】", think_stream, is_think=True)
+    else:
+        final_conclusion = _consume_stream(think_stream)
+    session.log_state("final_state", -1, state)
+
+    if not silent:
+        print(f"\n[Session 记录已写入: {session.folder}]")
+
+    return ConsultationResult(
+        case_id=case.case_id,
+        conversation_history=conv_history,
+        question_turns=question_turns,
+        final_conclusion=final_conclusion,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -299,7 +500,7 @@ def main() -> None:
         else:
             cases = load_benchmark()
             case = select_case(cases, args.case_id)
-            run_consultation(case, llm_strong, llm_think, memory=memory)
+            run_consultant_loop(case, llm_strong, llm_think, memory=memory)
     except LLMClientError as e:
         print(f"[LLM 错误] {e}")
         sys.exit(1)
