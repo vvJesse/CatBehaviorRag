@@ -1,0 +1,38 @@
+目标：
+
+给当前项目接入 LangSmith tracing。
+
+要求：
+
+1. 不要重构项目架构
+
+2. 不要修改业务逻辑
+
+3. 仅增加 tracing 能力
+
+4. 优先使用官方推荐方案
+
+5. 每一步修改前先解释原因
+
+6. 所有修改保持最小化
+
+7. 如果不确定，请先搜索官方文档
+
+8. 完成后告诉我：
+
+- 改了哪些文件
+
+- 如何验证 tracing 生效
+
+- 如何关闭 tracing
+
+当前需求：
+
+我希望能看到：
+
+- tool call
+- planner过程
+- memory retrieval
+- prompt
+- token usage
+- latency

@@ -10,7 +10,7 @@ def main() -> None:
 	st.title("Cat Behavior RAG")
 	st.write("上传一个文件，然后在页面里直接读取内容。")
 
-	uploaded_file = st.file_uploader("选择一个 txt 或 pdf 文件", type=["txt", "pdf"])
+	uploaded_file = st.file_uploader("选择一个 txt、pdf 或 epub 文件", type=["txt", "pdf", "epub"])
 
 	if uploaded_file is None:
 		st.info("请先上传文件。")

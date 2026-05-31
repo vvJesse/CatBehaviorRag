@@ -1,0 +1,130 @@
+{
+  "tool_phase": [
+    {
+      "name": "window stress case should request weather tool",
+      "state": {
+        "user_initial_query": "我的猫咪乱尿怎么办？",
+        "rewritten_initial_query": "猫咪最近几周在窗边和门口附近乱尿，并且会攻击靠近窗边的新猫，这种变化可能和什么因素有关？",
+        "user_response_this_round": "最近几周总在窗边和门口附近乱尿，晚上偶尔能听到窗外有猫叫。",
+        "hypothesis": [
+          {
+            "description": "环境应激",
+            "confidence": "Unexplored"
+          },
+          {
+            "description": "医疗原因",
+            "confidence": "Unexplored"
+          },
+          {
+            "description": "多猫压力",
+            "confidence": "Unexplored"
+          }
+        ],
+        "collected_evidence": []
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "最近几周总在窗边和门口附近乱尿，晚上偶尔能听到窗外有猫叫。"
+        }
+      ],
+      "trajectory": []
+    }
+  ],
+  "state_update": [
+    {
+      "name": "misleading injury query should show how state gets revised",
+      "state": {
+        "user_initial_query": "我的猫之前在我头上拉尿，我没控制住打了它，现在我发现它心跳好像很快，怎么办？",
+        "rewritten_initial_query": "我的猫被我打后心跳很快，这是不是内伤？",
+        "user_response_this_round": "其实我是看胸口起伏觉得快，不确定是不是心跳。它有时候睡着又挺正常。",
+        "hypothesis": [
+          {
+            "description": "外伤内伤",
+            "confidence": "Unexplored"
+          },
+          {
+            "description": "医疗原因",
+            "confidence": "Unexplored"
+          }
+        ],
+        "collected_evidence": []
+      },
+      "history": [
+        {
+          "role": "assistant",
+          "content": "你说的心跳快是怎么判断的？睡着的时候也一直这样吗？"
+        },
+        {
+          "role": "user",
+          "content": "其实我是看胸口起伏觉得快，不确定是不是心跳。它有时候睡着又挺正常。"
+        }
+      ]
+    }
+  ],
+  "consult_response": [
+    {
+      "name": "follow up should ask focused diagnostic question",
+      "state": {
+        "user_initial_query": "我的猫咪乱尿怎么办？",
+        "rewritten_initial_query": "猫咪最近几周在窗边和门口附近乱尿，并且会攻击靠近窗边的新猫，这种变化可能和什么因素有关？",
+        "hypothesis": [
+          {
+            "description": "环境应激",
+            "confidence": "High"
+          },
+          {
+            "description": "医疗原因",
+            "confidence": "Medium"
+          },
+          {
+            "description": "多猫压力",
+            "confidence": "Medium"
+          }
+        ],
+        "collected_evidence": [
+          "固定在窗边和门口附近乱尿",
+          "夜间偶尔能听到窗外猫叫"
+        ]
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "最近几周总在窗边和门口附近乱尿，晚上偶尔能听到窗外有猫叫。"
+        }
+      ]
+    },
+    {
+      "name": "end response should explicitly stop questioning",
+      "state": {
+        "user_initial_query": "新来的猫特别怕人怎么办？",
+        "rewritten_initial_query": "新来的猫非常怕人、长期躲藏，同时原住民猫持续盯视和哈气，这更像什么问题？",
+        "hypothesis": [
+          {
+            "description": "介绍过快",
+            "confidence": "High"
+          },
+          {
+            "description": "环境应激",
+            "confidence": "High"
+          }
+        ],
+        "collected_evidence": [
+          "新猫长期躲藏",
+          "老猫持续盯视",
+          "接触时偶尔哈气"
+        ]
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "新猫特别怕人，老猫一直盯着它，见面偶尔还会哈气。"
+        },
+        {
+          "role": "assistant",
+          "content": "目前我已经大致了解情况了。"
+        }
+      ]
+    }
+  ]
+}
