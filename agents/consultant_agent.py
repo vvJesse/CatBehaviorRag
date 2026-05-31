@@ -5,6 +5,7 @@ import json
 import logging
 from typing import Iterator, Literal
 
+import Config
 from langchain_core.messages import BaseMessage
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -18,6 +19,12 @@ from utils.tools import TOOL_MAP, TOOLS
 logger = logging.getLogger(__name__)
 
 HypothesisConfidence = Literal["Unexplored", "Low", "Medium", "High"]
+_HYPOTHESIS_CONFIDENCE_PRIORITY = {
+    "High": 3,
+    "Medium": 2,
+    "Low": 1,
+    "Unexplored": 0,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -48,25 +55,41 @@ class ConsultState(BaseModel):
 # Agent response schemas
 # ---------------------------------------------------------------------------
 
-class IntermediateResponse(BaseModel):
-    type: Literal["tool_call", "end_tool"] = Field(
-        description="tool_call=需要调用工具；end_tool=无需继续调用工具"
+class ToolCallDecision(BaseModel):
+    type: Literal["tool_call"] = Field(
+        default="tool_call",
+        description="表示需要调用工具",
     )
     thought: str = Field(description="推理过程")
-    tool_name: str | None = Field(
-        default=None,
-        description="type=tool_call 时填写工具名称，否则为 null",
+    tool_name: str = Field(
+        description="要调用的工具名称",
     )
-    tool_args: dict | None = Field(
-        default=None,
-        description="type=tool_call 时填写工具参数，否则为 null",
+    tool_args: dict = Field(
+        description="合法 JSON object 形式的工具参数",
     )
 
     def is_tool_call(self) -> bool:
-        return self.type == "tool_call"
+        return True
 
     def end_tool_call(self) -> bool:
-        return self.type == "end_tool"
+        return False
+
+
+class EndToolDecision(BaseModel):
+    type: Literal["end_tool"] = Field(
+        default="end_tool",
+        description="表示无需继续调用工具",
+    )
+    thought: str = Field(description="推理过程")
+
+    def is_tool_call(self) -> bool:
+        return False
+
+    def end_tool_call(self) -> bool:
+        return True
+
+
+IntermediateResponse = ToolCallDecision | EndToolDecision
 
 
 class ConsultResponse(BaseModel):
@@ -174,6 +197,7 @@ _UPDATE_STATE_SYSTEM = """\
 - 发现原始问题存在误解时才调用 RewriteQuery，并同步清理受影响的假设方向
 - Unexplored 表示尚未探索，只有拿到明确支持或反证后才调整为 Low/Medium/High
 - 本轮信息支持某方向 → 提升置信度；信息否定某方向 → 降低或移除；信息揭示新方向 → 添加
+- 假设方向总数不能超过 5 个；如果需要新增方向，必须同时移除低价值或重复方向，优先保留当前最值得继续探索或已有证据支持的方向
 - 未受本轮信息影响的方向无需操作
 - 保持方向多样性，不要过早收敛到单一结论"""
 
@@ -197,8 +221,11 @@ _TOOL_SYSTEM = """\
 {tool_descriptions}
 
 决策规则：
-- 如果需要调用工具，输出 type=tool_call，填写 thought、tool_name、tool_args
-- 如果已无需继续调用工具，输出 type=end_tool，填写 thought
+- 你必须且只能调用一个结构化函数，不要输出自由文本
+- 如果需要调用工具，调用 ToolCallDecision，并填写 type=tool_call、thought、tool_name、tool_args
+- 如果已无需继续调用工具，调用 EndToolDecision，并填写 type=end_tool、thought
+- tool_args 必须是合法 JSON object
+- 当调用工具和当前用户的问题有潜在关联时，哪怕 state 的 hypothesis 没有考虑到，也可以调用工具；如果没有必要调用工具，就直接输出 end_tool
 - 每次只调用一个工具"""
 
 _TOOL_PROMPT = ChatPromptTemplate.from_messages([
@@ -232,7 +259,9 @@ _CONSULT_PROMPT = ChatPromptTemplate.from_messages([
 # ---
 
 _THINK_SYSTEM = """\
-你是一位专业的猫行为学顾问。问诊已结束，请根据完整的诊断状态和对话历史，给出详细的分析和建议。
+你是一位专业的猫行为学顾问。
+
+你将基于提供的诊断状态与对话历史，输出一个“收敛型诊断结论 + 最小可执行建议”。
 
 当前诊断状态（State）：
 {state}
@@ -240,9 +269,10 @@ _THINK_SYSTEM = """\
 输出要求：
 - 根据收集到的信息，判断猫咪是否真的存在异常。
 - 如果存在，则给出具体可操作的建议；如果不存在，则明确告知用户可能的替代性解释，避免误导用户。
-- 如果有假设存在不确定性，明确说明。
+- 如果有假设存在不确定性，比如此刻收集不到更明确的证据，必须明确说明，不允许在没有证据支持的情况下认为某个假设是成立或者高概率的。
 - 给出具体可操作的建议。
-- 你的回复在保持专业性的同时也要用户友好，避免使用太生硬、冗长的文字。
+- 禁止长篇大论（例如长篇幅的分阶段的操作建议）
+- 用简单易懂的语言与用户对话。
 - 用中文回复"""
 
 _THINK_PROMPT = ChatPromptTemplate.from_messages([
@@ -281,6 +311,20 @@ def _format_tool_descriptions() -> str:
     )
 
 
+def _trim_hypotheses(hypothesis: list[HypothesisItem], max_items: int = 5) -> list[HypothesisItem]:
+    if len(hypothesis) <= max_items:
+        return hypothesis
+    indexed = list(enumerate(hypothesis))
+    indexed.sort(
+        key=lambda item: (
+            -_HYPOTHESIS_CONFIDENCE_PRIORITY.get(item[1].confidence, -1),
+            item[0],
+        )
+    )
+    kept_indices = {index for index, _ in indexed[:max_items]}
+    return [item for index, item in enumerate(hypothesis) if index in kept_indices]
+
+
 # ---------------------------------------------------------------------------
 # ConsultantAgent
 # ---------------------------------------------------------------------------
@@ -288,16 +332,29 @@ def _format_tool_descriptions() -> str:
 class ConsultantAgent:
     """统一的咨询 Agent：负责 query rewrite、tool 调用、正式提问和最终 think。"""
 
-    def __init__(self, llm_strong: LLMClient, llm_think: LLMClient) -> None:
+    def __init__(self, llm_fast: LLMClient, llm_strong: LLMClient, llm_think: LLMClient) -> None:
+        self._llm_fast = llm_fast
         self._llm_strong = llm_strong
         self._llm_think = llm_think
+        self._phase_llms = {
+            "fast": llm_fast,
+            "strong": llm_strong,
+            "think": llm_think,
+        }
+
+        llm_rewrite = self._get_phase_llm("rewrite")
+        llm_init_hypothesis = self._get_phase_llm("init_hypothesis")
+        llm_tool = self._get_phase_llm("tool_calling")
+        llm_state_update = self._get_phase_llm("state_update")
+        llm_consult = self._get_phase_llm("consult_response")
+        self._llm_final_think = self._get_phase_llm("final_think")
 
         self._rewrite_chain = (
-            _REWRITE_PROMPT | llm_strong.chat_model
+            _REWRITE_PROMPT | llm_rewrite.chat_model
         )
         self._init_hypothesis_chain = (
             _INIT_HYPOTHESIS_PROMPT
-            | llm_strong.chat_model.bind_tools(
+            | llm_init_hypothesis.chat_model.bind_tools(
                 [InitialHypotheses],
                 tool_choice={"type": "function", "function": {"name": "InitialHypotheses"}},
             )
@@ -306,28 +363,29 @@ class ConsultantAgent:
         _update_ops = [SetHypothesisConfidence, AddHypothesis, RemoveHypothesis, AddEvidence, RewriteQuery]
         self._update_state_chain = (
             _UPDATE_STATE_PROMPT
-            | llm_strong.chat_model.bind_tools(_update_ops)
+            | llm_state_update.chat_model.bind_tools(_update_ops)
             | PydanticToolsParser(tools=_update_ops, first_tool_only=False)
         )
         self._tool_chain = (
             _TOOL_PROMPT
-            | llm_strong.chat_model.bind_tools(
-                [IntermediateResponse],
-                tool_choice={"type": "function", "function": {"name": "IntermediateResponse"}},
-            )
-            | PydanticToolsParser(tools=[IntermediateResponse], first_tool_only=True)
+            | llm_tool.chat_model.bind_tools([ToolCallDecision, EndToolDecision])
+            | PydanticToolsParser(tools=[ToolCallDecision, EndToolDecision], first_tool_only=True)
         )
         self._consult_chain = (
             _CONSULT_PROMPT
-            | llm_strong.chat_model.bind_tools(
+            | llm_consult.chat_model.bind_tools(
                 [ConsultResponse],
                 tool_choice={"type": "function", "function": {"name": "ConsultResponse"}},
             )
             | PydanticToolsParser(tools=[ConsultResponse], first_tool_only=True)
         )
         self._think_chain = (
-            _THINK_PROMPT | llm_think.chat_model
+            _THINK_PROMPT | self._llm_final_think.chat_model
         )
+
+    def _get_phase_llm(self, phase: str) -> LLMClient:
+        role = Config.resolve_phase_role(phase)
+        return self._phase_llms[role]
 
     # ------------------------------------------------------------------
     # Public API
@@ -392,6 +450,7 @@ class ConsultantAgent:
                 new_state.collected_evidence.append(op.evidence)
             elif isinstance(op, RewriteQuery):
                 new_state.rewritten_initial_query = op.rewritten_query
+        new_state.hypothesis = _trim_hypotheses(new_state.hypothesis, max_items=5)
         return new_state
 
     @retry(
@@ -416,7 +475,7 @@ class ConsultantAgent:
         })
         return result
 
-    def execute_tool(self, response: IntermediateResponse) -> str:
+    def execute_tool(self, response: ToolCallDecision) -> str:
         """执行工具调用，返回结果字符串。"""
         tool_fn = TOOL_MAP.get(response.tool_name or "")
         if not tool_fn:
@@ -450,8 +509,8 @@ class ConsultantAgent:
     @traceable(name="think_final", run_type="llm")
     def think(self, state: ConsultState, history: list[BaseMessage]) -> Iterator[str]:
         """流式输出最终诊断建议（使用思考模型）。"""
-        chain = _THINK_PROMPT | self._llm_think.chat_model
-        return self._llm_think.stream_chat_lc(chain, {
+        chain = _THINK_PROMPT | self._llm_final_think.chat_model
+        return self._llm_final_think.stream_chat_lc(chain, {
             "state": state.to_prompt_str(),
             "history": history,
         })

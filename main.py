@@ -76,7 +76,7 @@ def main() -> None:
             result = run_batch_evaluation(llm_fast, llm_strong, llm_think, memory=memory)
             _print_evaluation_report(result)
         elif args.free_chat:
-            run_free_chat(llm_strong, llm_think, memory=memory)
+            run_free_chat(llm_fast, llm_strong, llm_think, memory=memory)
         elif args.resume_run:
             source_store = CheckpointStore.open_existing(Config.project_root / "run" / args.resume_run)
             checkpoint = source_store.load_checkpoint(args.checkpoint_id)
@@ -89,6 +89,7 @@ def main() -> None:
             )
             run_consultant_loop(
                 case,
+                llm_fast,
                 llm_strong,
                 llm_think,
                 memory=memory,
@@ -100,6 +101,7 @@ def main() -> None:
             case = select_case(cases, args.case_id)
             run_consultant_loop(
                 case,
+                llm_fast,
                 llm_strong,
                 llm_think,
                 memory=memory,

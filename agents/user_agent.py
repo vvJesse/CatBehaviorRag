@@ -16,7 +16,6 @@ class UserAgent:
     def __init__(self, case: BenchmarkCase, llm_strong: LLMClient) -> None:
         self.case = case
         self._llm_strong = llm_strong
-        self._conversation_history: list[dict] = []
         self._system_prompt = self._build_system_prompt()
 
     # ------------------------------------------------------------------
@@ -31,10 +30,11 @@ class UserAgent:
             f"{self.case.user_setting}\n"
             "---\n\n"
             "【回答原则】\n"
+            "- 你只能根据以上内容回答，不要补充常识判断。"
             "- 先判断你的认知是否足够回答专家的问题\n"
-            "- 如果足够回答，则仅仅回答专家的问题，不做额外的发挥。\n"
-            "- 如果不足够回答，则说不知道，或者这个问题无法回答。\n"
-            "- 用中文回答。"
+            "- 如果足够回答，则仅仅回答专家的问题，不做额外的发挥，不编造任何的信息，也不做推测。\n"
+            "- 如果信息不足，则直接说息不知道，干脆不回答。\n"
+            "- 用中文回答，要像一个普通人一样对话。"
         )
 
     # ------------------------------------------------------------------
@@ -42,21 +42,13 @@ class UserAgent:
     # ------------------------------------------------------------------
 
     @traceable(name="user_agent_respond", run_type="chain")
-    def respond(self, behaviorist_message: str) -> Iterator[str]:
-        """根据行为专家的消息流式生成猫主人的回复。
-
-        调用方需消费完整个迭代器；内部会在迭代结束后自动更新对话历史。
-        """
+    def respond(self, conversation_history: list[dict]) -> Iterator[str]:
+        """根据完整对话历史流式生成猫主人的回复。"""
         messages: list[dict] = [{"role": "system", "content": self._system_prompt}]
-        messages.extend(self._conversation_history)
-        messages.append({"role": "user", "content": behaviorist_message})
+        messages.extend(conversation_history)
 
         accumulated: list[str] = []
 
         for chunk in self._llm_strong.stream_chat(messages):
             accumulated.append(chunk)
             yield chunk
-
-        full_response = "".join(accumulated)
-        self._conversation_history.append({"role": "user", "content": behaviorist_message})
-        self._conversation_history.append({"role": "assistant", "content": full_response})

@@ -75,7 +75,7 @@ def _call_weather(latitude: str, longitude: str, date: str) -> str:
 weather_tool = StructuredTool.from_function(
     func=_call_weather,
     name="weather",
-    description="查询指定经纬度坐标在某日期的历史天气（最高温、最低温、降水量）",
+    description="查询指定经纬度坐标在某日期的历史天气（最高温、最低温、降水量）, 仅适合针对户外场景的猫。",
     args_schema=WeatherInput,
 )
 

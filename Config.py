@@ -112,6 +112,26 @@ model_think = os.getenv("MODEL_THINK", "qwen3-32b")
 # 思考模型是否启用 enable_thinking（DashScope qwen3 系列专用参数）
 model_think_enable_thinking = os.getenv("MODEL_THINK_ENABLE_THINKING", "true").lower() == "true"
 
+# --- Consultation Phase Routing ---
+# 这些配置控制问诊各阶段默认使用哪一档模型；仅需改这里，无需改命令行参数。
+rewrite_phase_role = os.getenv("REWRITE_PHASE_ROLE", "fast").strip().lower()
+init_hypothesis_phase_role = os.getenv("INIT_HYPOTHESIS_PHASE_ROLE", "strong").strip().lower()
+tool_calling_phase_role = os.getenv("TOOL_CALLING_PHASE_ROLE", "strong").strip().lower()
+state_update_phase_role = os.getenv("STATE_UPDATE_PHASE_ROLE", "fast").strip().lower()
+consult_response_phase_role = os.getenv("CONSULT_RESPONSE_PHASE_ROLE", "strong").strip().lower()
+final_think_phase_role = os.getenv("FINAL_THINK_PHASE_ROLE", "think").strip().lower()
+
+_PHASE_ROLE_MAP = {
+    "rewrite": rewrite_phase_role,
+    "init_hypothesis": init_hypothesis_phase_role,
+    "tool_calling": tool_calling_phase_role,
+    "state_update": state_update_phase_role,
+    "consult_response": consult_response_phase_role,
+    "final_think": final_think_phase_role,
+}
+
+_ALLOWED_MODEL_ROLES = {"fast", "strong", "think"}
+
 
 def resolve_model(role: str) -> str:
     """根据角色返回对应模型名。路由关闭时全部返回 consultation_model。
@@ -123,6 +143,14 @@ def resolve_model(role: str) -> str:
     return {"fast": model_fast, "strong": model_strong, "think": model_think}.get(
         role, consultation_model
     )
+
+
+def resolve_phase_role(phase: str) -> str:
+    """返回指定问诊阶段对应的模型档位。"""
+    role = _PHASE_ROLE_MAP.get(phase, "strong")
+    if role not in _ALLOWED_MODEL_ROLES:
+        raise ValueError(f"未知的 phase role 配置: phase={phase} role={role}")
+    return role
 
 
 # --- Memory ---

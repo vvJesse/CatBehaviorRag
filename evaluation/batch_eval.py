@@ -59,7 +59,7 @@ def run_batch_evaluation(
     for case in cases:
         logger.info("运行 case %s ...", case.case_id)
         consultation = run_consultant_loop(
-            case, llm_strong, llm_think, memory=memory, silent=True
+            case, llm_fast, llm_strong, llm_think, memory=memory, silent=True
         )
         results.append((case, consultation))
 

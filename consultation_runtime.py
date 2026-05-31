@@ -407,8 +407,7 @@ def _build_benchmark_user_input_provider(
     def provider(round_num: int, ctx: RuntimeContext, silent: bool) -> str | None:
         if round_num == 0:
             return case.initial_user_message
-        last_consultant_msg = ctx.history[-1].content if ctx.history else ""
-        user_stream = user_agent.respond(last_consultant_msg)
+        user_stream = user_agent.respond(list(ctx.conversation_history))
         return _stream_turn("【猫主人】", user_stream) if not silent else _consume_stream(user_stream)
 
     return provider
@@ -433,6 +432,7 @@ def _build_free_chat_user_input_provider() -> Callable[[int, RuntimeContext, boo
 
 def run_consultant_loop(
     case: BenchmarkCase,
+    llm_fast: LLMClient,
     llm_strong: LLMClient,
     llm_think: LLMClient,
     memory: str = "",
@@ -446,7 +446,7 @@ def run_consultant_loop(
     if not silent:
         print(f"[Run 目录] {checkpoint_store.folder}")
 
-    consultant = ConsultantAgent(llm_strong, llm_think)
+    consultant = ConsultantAgent(llm_fast, llm_strong, llm_think)
     user_agent = UserAgent(case, llm_strong)
 
     if resume_checkpoint is None:
@@ -512,6 +512,7 @@ def run_consultant_loop(
 
 
 def run_free_chat(
+    llm_fast: LLMClient,
     llm_strong: LLMClient,
     llm_think: LLMClient,
     memory: str = "",
@@ -536,7 +537,7 @@ def run_free_chat(
     _ensure_log_files(store.folder, reset=False)
     print(f"[Run 目录] {store.folder}")
 
-    consultant = ConsultantAgent(llm_strong, llm_think)
+    consultant = ConsultantAgent(llm_fast, llm_strong, llm_think)
     ctx = _create_initial_context(
         consultant=consultant,
         initial_input=initial_input,

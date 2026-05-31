@@ -19,9 +19,10 @@ from utils.llm_client import LLMClient
 def _build_consultant() -> ConsultantAgent:
     if not os.getenv("DASHSCOPE_API_KEY"):
         raise ValueError("DASHSCOPE_API_KEY 未设置，无法运行 prompt 调试脚本。")
+    llm_fast = LLMClient.build_for_role("fast")
     llm_strong = LLMClient.build_for_role("strong")
     llm_think = LLMClient.build_for_role("think")
-    return ConsultantAgent(llm_strong, llm_think)
+    return ConsultantAgent(llm_fast, llm_strong, llm_think)
 
 
 def _dump(title: str, payload: dict) -> None:
