@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from main import ConsultationResult
+from consultation_runtime import ConsultationResult
 
 
 def compute_aqt(results: list[ConsultationResult]) -> float:

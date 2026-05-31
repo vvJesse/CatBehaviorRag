@@ -17,6 +17,8 @@ from utils.tools import TOOL_MAP, TOOLS
 
 logger = logging.getLogger(__name__)
 
+HypothesisConfidence = Literal["Unexplored", "Low", "Medium", "High"]
+
 
 # ---------------------------------------------------------------------------
 # State schema
@@ -24,11 +26,14 @@ logger = logging.getLogger(__name__)
 
 class HypothesisItem(BaseModel):
     description: str = Field(description="假设内容描述")
-    confidence: Literal["Low", "Medium", "High"] = Field(description="当前置信度")
+    confidence: HypothesisConfidence = Field(description="当前置信度")
 
 
 class ConsultState(BaseModel):
     user_initial_query: str
+    consultation_date: str | None = None
+    consultation_latitude: str | None = None
+    consultation_longitude: str | None = None
     rewritten_initial_query: str | None = None
     user_response_this_round: str | None = None
     hypothesis: list[HypothesisItem] = Field(default_factory=list)
@@ -83,11 +88,11 @@ class InitialHypotheses(BaseModel):
 class SetHypothesisConfidence(BaseModel):
     """调整已有假设方向的置信度"""
     description: str = Field(description="假设方向名称，须与现有假设列表中的名称完全一致")
-    confidence: Literal["Low", "Medium", "High"] = Field(description="调整后的置信度")
+    confidence: HypothesisConfidence = Field(description="调整后的置信度")
 
 
 class AddHypothesis(BaseModel):
-    """添加新的假设方向（初始置信度自动设为 Medium）"""
+    """添加新的假设方向（初始置信度自动设为 Unexplored）"""
     description: str = Field(description="新假设方向的简短名称，2-5字，如医疗原因、环境应激")
 
 
@@ -139,7 +144,7 @@ _INIT_HYPOTHESIS_SYSTEM = """\
 - 每个方向只需一个简短标签（2-5字），不要写详细解释，例如：医疗原因、环境应激、行为习得、主人互动
 - 方向之间须有明显差异，严禁同质化（如焦虑和应激不能作为两个独立方向）
 - 主动考虑用户可能没有意识到的因素（如无意间的强化行为、就医指征等）
-- 初始置信度一律设为 Medium"""
+- 初始置信度一律设为 Unexplored，表示这些只是待探索方向，不能据此直接下结论"""
 
 _INIT_HYPOTHESIS_PROMPT = ChatPromptTemplate.from_messages([
     ("system", _INIT_HYPOTHESIS_SYSTEM),
@@ -158,8 +163,8 @@ _UPDATE_STATE_SYSTEM = """\
 {user_response}
 
 你有以下五个函数可以调用，可同时调用多个：
-- SetHypothesisConfidence(description, confidence)：调整某个方向的置信度（Low/Medium/High），description 须与列表中名称完全一致
-- AddHypothesis(description)：添加新的假设方向，description 为简短标签（2-5字）
+- SetHypothesisConfidence(description, confidence)：调整某个方向的置信度（Unexplored/Low/Medium/High），description 须与列表中名称完全一致
+- AddHypothesis(description)：添加新的假设方向，description 为简短标签（2-5字），初始置信度设为Unexplored，表示未探索，必须有确切证据才能调整置信度。
 - RemoveHypothesis(description)：移除已被明确排除的方向，description 须与列表中名称完全一致
 - AddEvidence(evidence)：将用户本轮回答中的关键事实提取为一句话证据并记录
 - RewriteQuery(rewritten_query)：当发现用户原始问题存在误解（如主人混淆了概念，提出的问题不符合意图）时，重写结构化问题描述；通常同时配合 RemoveHypothesis 删除基于误解生成的旧方向，并用 AddHypothesis 补充正确方向
@@ -167,6 +172,7 @@ _UPDATE_STATE_SYSTEM = """\
 决策原则：
 - 用户回答中的关键事实（时间线、频率、触发条件、环境变化等）都应用 AddEvidence 记录
 - 发现原始问题存在误解时才调用 RewriteQuery，并同步清理受影响的假设方向
+- Unexplored 表示尚未探索，只有拿到明确支持或反证后才调整为 Low/Medium/High
 - 本轮信息支持某方向 → 提升置信度；信息否定某方向 → 降低或移除；信息揭示新方向 → 添加
 - 未受本轮信息影响的方向无需操作
 - 保持方向多样性，不要过早收敛到单一结论"""
@@ -210,8 +216,10 @@ _CONSULT_SYSTEM = """\
 {state}
 
 职责：
-- 根据当前 state 和对话历史，向用户提1~3个关键问题，逐步收集诊断信息。语气温和专业
-- 当你认为 state 已经有假设被验证，且不需要增加新的假设时，将 end 设为 true
+- 根据当前 state 和对话历史，向用户提1~3个关键问题，逐步收集诊断信息。语气温和专业。
+- 当还有假设方向未被验证时，必须继续提出问题，直到所有方向都已验证。
+- state 的假设存在不够完善的可能，这时必须提出新的假设方向，并继续向用户提问。
+- 当你认为已经收集够了证据，并且不需要增加新的假设时，将 end 设为 true
 - end=true 时，text 必须是一句说明性陈述，明确告知用户已收集到足够信息、将进行深度分析，不得再提问
 - 用中文回复"""
 
@@ -230,9 +238,11 @@ _THINK_SYSTEM = """\
 {state}
 
 输出要求：
-- 分析各假设的可能性及依据
-- 给出具体可操作的建议
-- 如有不确定性，明确说明
+- 根据收集到的信息，判断猫咪是否真的存在异常。
+- 如果存在，则给出具体可操作的建议；如果不存在，则明确告知用户可能的替代性解释，避免误导用户。
+- 如果有假设存在不确定性，明确说明。
+- 给出具体可操作的建议。
+- 你的回复在保持专业性的同时也要用户友好，避免使用太生硬、冗长的文字。
 - 用中文回复"""
 
 _THINK_PROMPT = ChatPromptTemplate.from_messages([
@@ -372,7 +382,7 @@ class ConsultantAgent:
             elif isinstance(op, AddHypothesis):
                 if not any(h.description == op.description for h in new_state.hypothesis):
                     new_state.hypothesis.append(
-                        HypothesisItem(description=op.description, confidence="Medium")
+                        HypothesisItem(description=op.description, confidence="Unexplored")
                     )
             elif isinstance(op, RemoveHypothesis):
                 new_state.hypothesis = [

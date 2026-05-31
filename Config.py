@@ -95,6 +95,10 @@ consultation_model = os.getenv("CONSULTATION_MODEL", "qwen-plus")
 max_conversation_rounds = int(os.getenv("MAX_CONVERSATION_ROUNDS", "10"))
 benchmark_path = project_root / "data" / "enquiries_benchmark_v2.json"
 
+# --- Checkpoint ---
+checkpoint_enabled = os.getenv("CHECKPOINT_ENABLED", "true").lower() == "true"
+checkpoint_dirname = os.getenv("CHECKPOINT_DIRNAME", "checkpoints")
+
 # --- Model Routing ---
 # 路由总开关：True 启用路由，False 全部使用 consultation_model（消融实验用）
 routing_enabled = os.getenv("ROUTING_ENABLED", "true").lower() == "true"

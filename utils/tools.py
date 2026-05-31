@@ -5,7 +5,7 @@ from typing import Annotated
 
 import requests
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -18,9 +18,14 @@ _OPEN_METEO_URL = "https://archive-api.open-meteo.com/v1/archive"
 # ---------------------------------------------------------------------------
 
 class WeatherInput(BaseModel):
-    latitude: Annotated[str, Field(description="纬度，例如 23.1291")]
-    longitude: Annotated[str, Field(description="经度，例如 113.2644")]
+    latitude: Annotated[str | float, Field(description="纬度，例如 23.1291")]
+    longitude: Annotated[str | float, Field(description="经度，例如 113.2644")]
     date: Annotated[str, Field(description="查询日期，格式 YYYY-MM-DD")]
+
+    @field_validator("latitude", "longitude", mode="before")
+    @classmethod
+    def _normalize_coordinates(cls, value: str | float) -> str:
+        return str(value)
 
 
 @retry(

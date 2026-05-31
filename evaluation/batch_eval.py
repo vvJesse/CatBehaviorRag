@@ -6,15 +6,15 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-from main import ConsultationResult, run_consultant_loop
+from consultation_runtime import ConsultationResult, run_consultant_loop
 from utils.benchmark_loader import load_benchmark
 from utils.llm_client import LLMClient
 
 from evaluation.metrics.aqt import compute_aqt
-from evaluation.metrics.as_ import compute_actionability, compute_actionability_normalized
+from evaluation.metrics.as_ import compute_actionability
 from evaluation.metrics.base import LLMJudge
 from evaluation.metrics.dcs import compute_dcs
-from evaluation.metrics.ufs import compute_ufs, compute_ufs_normalized
+from evaluation.metrics.ufs import compute_ufs
 from evaluation.metrics.uha import compute_uha
 
 logger = logging.getLogger(__name__)
@@ -95,12 +95,7 @@ def run_batch_evaluation(
     n = len(case_evals)
     result = BatchEvaluationResult(
         total_cases=n,
-        aqt=compute_aqt([ConsultationResult(
-            case_id=e.case_id,
-            conversation_history=[],
-            question_turns=e.question_turns,
-            final_conclusion="",
-        ) for e in case_evals]),
+        aqt=compute_aqt(consultations),
         mean_ufs_norm=sum(e.ufs_norm for e in case_evals) / n if n else 0.0,
         mean_dcs=sum(e.dcs for e in case_evals) / n if n else 0.0,
         mean_as_norm=sum(e.as_norm for e in case_evals) / n if n else 0.0,
